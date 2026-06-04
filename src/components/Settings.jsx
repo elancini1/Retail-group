@@ -1,0 +1,250 @@
+import React, { useState } from "react";
+
+const MOCK_COMPANY = {
+  name: "Retail Group Inc.",
+  industry: "Apparel & Fashion",
+  currency: "USD",
+  timezone: "America/New_York",
+};
+
+const MOCK_STORES = [
+  { id: "s1", name: "Downtown Store", location: "Main Street", active: true },
+  { id: "s2", name: "Uptown Store", location: "Mall Plaza", active: true },
+  { id: "s3", name: "Suburban Store", location: "Route 9 Strip", active: false },
+];
+
+const MOCK_NOTIFICATIONS = {
+  lowStock: true,
+  transferApprovals: true,
+  aiRecommendations: false,
+  weeklyDigest: true,
+};
+
+const MOCK_PREFS = {
+  density: "Default",
+  language: "English",
+};
+
+const NOTIF_ITEMS = [
+  {
+    key: "lowStock",
+    label: "Low stock alerts",
+    desc: "Notify when an item drops below its reorder threshold",
+  },
+  {
+    key: "transferApprovals",
+    label: "Transfer approvals",
+    desc: "Notify when a transfer request needs your sign-off",
+  },
+  {
+    key: "aiRecommendations",
+    label: "AI recommendations",
+    desc: "Receive AI-generated restock suggestions as they are produced",
+  },
+  {
+    key: "weeklyDigest",
+    label: "Weekly performance digest",
+    desc: "Summary of sales and inventory trends every Monday",
+  },
+];
+
+function Toggle({ checked, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`settings-toggle${checked ? " on" : ""}`}
+    >
+      <span className="toggle-thumb" />
+    </button>
+  );
+}
+
+export default function Settings() {
+  const [company, setCompany] = useState(MOCK_COMPANY);
+  const [stores, setStores] = useState(MOCK_STORES);
+  const [notifs, setNotifs] = useState(MOCK_NOTIFICATIONS);
+  const [prefs, setPrefs] = useState(MOCK_PREFS);
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const toggleStore = (id) =>
+    setStores(stores.map((s) => (s.id === id ? { ...s, active: !s.active } : s)));
+
+  return (
+    <>
+      <section className="card section-card">
+        <div className="section-heading">
+          <div>
+            <h3>Company Information</h3>
+            <p className="muted">Basic details about your organization.</p>
+          </div>
+        </div>
+        <div className="settings-form-grid">
+          <label className="settings-field">
+            <span className="settings-label">Company name</span>
+            <input
+              className="search-input settings-input"
+              value={company.name}
+              onChange={(e) => setCompany({ ...company, name: e.target.value })}
+            />
+          </label>
+          <label className="settings-field">
+            <span className="settings-label">Industry</span>
+            <select
+              className="search-input settings-input"
+              value={company.industry}
+              onChange={(e) => setCompany({ ...company, industry: e.target.value })}
+            >
+              <option>Apparel &amp; Fashion</option>
+              <option>Electronics</option>
+              <option>Grocery &amp; Food</option>
+              <option>Home &amp; Garden</option>
+              <option>Sporting Goods</option>
+            </select>
+          </label>
+          <label className="settings-field">
+            <span className="settings-label">Currency</span>
+            <select
+              className="search-input settings-input"
+              value={company.currency}
+              onChange={(e) => setCompany({ ...company, currency: e.target.value })}
+            >
+              <option>USD</option>
+              <option>EUR</option>
+              <option>GBP</option>
+              <option>CAD</option>
+            </select>
+          </label>
+          <label className="settings-field">
+            <span className="settings-label">Timezone</span>
+            <select
+              className="search-input settings-input"
+              value={company.timezone}
+              onChange={(e) => setCompany({ ...company, timezone: e.target.value })}
+            >
+              <option value="America/New_York">Eastern Time (ET)</option>
+              <option value="America/Chicago">Central Time (CT)</option>
+              <option value="America/Denver">Mountain Time (MT)</option>
+              <option value="America/Los_Angeles">Pacific Time (PT)</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section className="card section-card">
+        <div className="section-heading">
+          <div>
+            <h3>Store Management</h3>
+            <p className="muted">Manage the stores connected to your account.</p>
+          </div>
+          <button className="btn">+ Add store</button>
+        </div>
+        <div className="settings-row-list">
+          {stores.map((store) => (
+            <div key={store.id} className="settings-list-row">
+              <div>
+                <strong>{store.name}</strong>
+                <p className="muted" style={{ margin: 0 }}>{store.location}</p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <span
+                  className={`status-chip ${store.active ? "status-approved" : "status-reconciled"}`}
+                >
+                  {store.active ? "Active" : "Inactive"}
+                </span>
+                <Toggle checked={store.active} onChange={() => toggleStore(store.id)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card section-card">
+        <div className="section-heading">
+          <div>
+            <h3>Notification Settings</h3>
+            <p className="muted">Choose which events trigger alerts for your team.</p>
+          </div>
+        </div>
+        <div className="settings-row-list">
+          {NOTIF_ITEMS.map(({ key, label, desc }) => (
+            <div key={key} className="settings-list-row">
+              <div>
+                <strong>{label}</strong>
+                <p className="muted" style={{ margin: 0 }}>{desc}</p>
+              </div>
+              <Toggle
+                checked={notifs[key]}
+                onChange={(val) => setNotifs({ ...notifs, [key]: val })}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card section-card">
+        <div className="section-heading">
+          <div>
+            <h3>User Preferences</h3>
+            <p className="muted">Customize your personal dashboard experience.</p>
+          </div>
+        </div>
+        <div className="settings-form-grid">
+          <div className="settings-field">
+            <span className="settings-label">Table density</span>
+            <div className="filter-group">
+              {["Compact", "Default", "Comfortable"].map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`filter-button${prefs.density === opt ? " active" : ""}`}
+                  onClick={() => setPrefs({ ...prefs, density: opt })}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="settings-field">
+            <span className="settings-label">Language</span>
+            <select
+              className="search-input settings-input"
+              value={prefs.language}
+              onChange={(e) => setPrefs({ ...prefs, language: e.target.value })}
+            >
+              <option>English</option>
+              <option>Spanish</option>
+              <option>French</option>
+              <option>German</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <div className="settings-save-bar">
+        <button
+          type="button"
+          className="filter-button"
+          onClick={() => {
+            setCompany(MOCK_COMPANY);
+            setStores(MOCK_STORES);
+            setNotifs(MOCK_NOTIFICATIONS);
+            setPrefs(MOCK_PREFS);
+          }}
+        >
+          Discard changes
+        </button>
+        <button type="button" className="btn" onClick={handleSave}>
+          {saved ? "Saved!" : "Save changes"}
+        </button>
+      </div>
+    </>
+  );
+}

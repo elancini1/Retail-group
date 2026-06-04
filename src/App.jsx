@@ -5,6 +5,7 @@ import StoreOverview from "./components/StoreOverview";
 import AIAssistant from "./components/AIAssistant";
 import Alerts from "./components/Alerts";
 import TransferTracking from "./components/TransferTracking";
+import Settings from "./components/Settings";
 import "./App.css";
 
 const MOCK_STORES = [
@@ -443,17 +444,7 @@ export default function App() {
       );
     }
 
-    return (
-      <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Settings</h3>
-            <p className="muted">Configure your dashboard experience.</p>
-          </div>
-        </div>
-        <div className="muted">Settings controls are coming soon for this MVP interface.</div>
-      </section>
-    );
+    return <Settings />;
   };
 
   return (
