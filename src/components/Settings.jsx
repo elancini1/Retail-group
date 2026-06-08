@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import usePersistentState from "../hooks/usePersistentState";
+import SectionHeader from "./SectionHeader";
+import { BuildingIcon, StoreIcon, BellIcon, SettingsIcon } from "./icons/Icons";
 
 const MOCK_COMPANY = {
   name: "Retail Group Inc.",
@@ -62,30 +65,41 @@ function Toggle({ checked, onChange }) {
   );
 }
 
+const DEFAULT_SETTINGS = {
+  company: MOCK_COMPANY,
+  stores: MOCK_STORES,
+  notifs: MOCK_NOTIFICATIONS,
+  prefs: MOCK_PREFS,
+};
+
 export default function Settings() {
-  const [company, setCompany] = useState(MOCK_COMPANY);
-  const [stores, setStores] = useState(MOCK_STORES);
-  const [notifs, setNotifs] = useState(MOCK_NOTIFICATIONS);
-  const [prefs, setPrefs] = useState(MOCK_PREFS);
-  const [saved, setSaved] = useState(false);
+  // `saved` is the persisted snapshot; `draft` holds unsaved edits.
+  const [saved, setSaved] = usePersistentState("settings", DEFAULT_SETTINGS);
+  const [draft, setDraft] = useState(saved);
+  const [justSaved, setJustSaved] = useState(false);
+
+  const { company, stores, notifs, prefs } = draft;
+  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+
+  const setCompany = (next) => update({ company: next });
+  const setNotifs = (next) => update({ notifs: next });
+  const setPrefs = (next) => update({ prefs: next });
 
   const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved(draft);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2000);
   };
 
+  const handleDiscard = () => setDraft(saved);
+
   const toggleStore = (id) =>
-    setStores(stores.map((s) => (s.id === id ? { ...s, active: !s.active } : s)));
+    update({ stores: stores.map((s) => (s.id === id ? { ...s, active: !s.active } : s)) });
 
   return (
     <>
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Company Information</h3>
-            <p className="muted">Basic details about your organization.</p>
-          </div>
-        </div>
+        <SectionHeader icon={BuildingIcon} title="Company Information" subtitle="Basic details about your organization." />
         <div className="settings-form-grid">
           <label className="settings-field">
             <span className="settings-label">Company name</span>
@@ -139,13 +153,12 @@ export default function Settings() {
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Store Management</h3>
-            <p className="muted">Manage the stores connected to your account.</p>
-          </div>
-          <button className="btn">+ Add store</button>
-        </div>
+        <SectionHeader
+          icon={StoreIcon}
+          title="Store Management"
+          subtitle="Manage the stores connected to your account."
+          action={<button className="btn">+ Add store</button>}
+        />
         <div className="settings-row-list">
           {stores.map((store) => (
             <div key={store.id} className="settings-list-row">
@@ -167,12 +180,7 @@ export default function Settings() {
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Notification Settings</h3>
-            <p className="muted">Choose which events trigger alerts for your team.</p>
-          </div>
-        </div>
+        <SectionHeader icon={BellIcon} title="Notification Settings" subtitle="Choose which events trigger alerts for your team." />
         <div className="settings-row-list">
           {NOTIF_ITEMS.map(({ key, label, desc }) => (
             <div key={key} className="settings-list-row">
@@ -190,12 +198,7 @@ export default function Settings() {
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>User Preferences</h3>
-            <p className="muted">Customize your personal dashboard experience.</p>
-          </div>
-        </div>
+        <SectionHeader icon={SettingsIcon} title="User Preferences" subtitle="Customize your personal dashboard experience." />
         <div className="settings-form-grid">
           <div className="settings-field">
             <span className="settings-label">Table density</span>
@@ -229,20 +232,11 @@ export default function Settings() {
       </section>
 
       <div className="settings-save-bar">
-        <button
-          type="button"
-          className="filter-button"
-          onClick={() => {
-            setCompany(MOCK_COMPANY);
-            setStores(MOCK_STORES);
-            setNotifs(MOCK_NOTIFICATIONS);
-            setPrefs(MOCK_PREFS);
-          }}
-        >
+        <button type="button" className="filter-button" onClick={handleDiscard}>
           Discard changes
         </button>
         <button type="button" className="btn" onClick={handleSave}>
-          {saved ? "Saved!" : "Save changes"}
+          {justSaved ? "Saved!" : "Save changes"}
         </button>
       </div>
     </>
