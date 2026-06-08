@@ -7,10 +7,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("dashboard renders the header and summary stats", async ({ page }) => {
-  await expect(page.getByRole("heading", { name: "Retail transfer dashboard" })).toBeVisible();
-  await expect(page.getByText("Active locations")).toBeVisible();
-  await expect(page.getByText("Units tracked across stores")).toBeVisible();
-  await expect(page.getByText("Items below reorder level")).toBeVisible();
+  await expect(page.getByText("Retail Transfer")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
+  await expect(page.getByText("Active stores")).toBeVisible();
+  await expect(page.getByText("Units in stock")).toBeVisible();
+  await expect(page.getByText("Low stock")).toBeVisible();
 });
 
 test("navigates between tabs", async ({ page }) => {
@@ -33,7 +34,7 @@ test("approving suggestions removes them and shows the empty state", async ({ pa
   await expect(approveButtons).toHaveCount(1);
 
   await approveButtons.first().click();
-  await expect(page.getByText("No suggestions right now")).toBeVisible();
+  await expect(page.getByText("You're all balanced")).toBeVisible();
 });
 
 test("inventory search shows an empty state when nothing matches", async ({ page }) => {
@@ -63,9 +64,28 @@ test("recovers from stale or corrupt persisted state instead of crashing", async
   await page.goto("/");
 
   // App still renders rather than throwing on .map/.reduce/destructure.
-  await expect(page.getByRole("heading", { name: "Retail transfer dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
 
   // Settings tab renders its store list (filled from defaults, not the stale object).
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Store Management" })).toBeVisible();
+});
+
+test("dark mode toggles and persists across reload", async ({ page }) => {
+  await page.goto("/");
+  const root = page.locator("html");
+
+  // Force a known starting point regardless of OS preference.
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
+
+  const toggle = page.getByRole("button", { name: /switch to dark mode/i });
+  await toggle.click();
+  await expect(root).toHaveAttribute("data-theme", "dark");
+
+  await page.reload();
+  await expect(root).toHaveAttribute("data-theme", "dark");
+
+  // And it can switch back.
+  await page.getByRole("button", { name: /switch to light mode/i }).click();
+  await expect(root).toHaveAttribute("data-theme", "light");
 });

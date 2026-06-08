@@ -3,7 +3,7 @@ export default function DonutChart({
   size = 132,
   stroke = 14,
   color = "var(--accent)",
-  trackColor = "#e6ebf5",
+  trackColor = "var(--surface-inset)",
   label,
 }) {
   const pct = Math.max(0, Math.min(100, value));

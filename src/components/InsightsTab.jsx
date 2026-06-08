@@ -1,28 +1,52 @@
 import Sparkline from "./charts/Sparkline";
+import MetricTile from "./MetricTile";
+import SectionHeader from "./SectionHeader";
+import {
+  ShieldIcon,
+  TransferIcon,
+  HeartPulseIcon,
+  SparkIcon,
+  AlertIcon,
+  ChatIcon,
+  TrendUpIcon,
+  TrendDownIcon,
+} from "./icons/Icons";
+
+const METRIC_ICONS = {
+  "Stockouts prevented": ShieldIcon,
+  "Transfer efficiency": TransferIcon,
+  "Inventory balance": HeartPulseIcon,
+};
 
 export default function InsightsTab({ insights }) {
   return (
     <>
-      <section className="summary-row">
-        {insights.metrics.map((metric) => (
-          <div key={metric.label} className="stat-card">
-            <div className="stat-label">{metric.label}</div>
-            <div className="stat-value">{metric.value}</div>
-            {metric.trend && (
-              <Sparkline data={metric.trend} color={metric.color} width={180} height={40} />
-            )}
-            <div className="stat-note">Last 8 weeks · AI-powered score</div>
-          </div>
-        ))}
+      <section className="dash-tiles">
+        {insights.metrics.map((metric) => {
+          const trend = metric.trend;
+          const delta = trend ? trend[trend.length - 1] - trend[0] : 0;
+          const up = delta >= 0;
+          return (
+            <MetricTile
+              key={metric.label}
+              icon={METRIC_ICONS[metric.label] || SparkIcon}
+              label={metric.label}
+              value={metric.value}
+              hint="Last 8 weeks"
+              tone="accent"
+              trend={
+                trend
+                  ? { dir: up ? "up" : "down", label: `${up ? "+" : ""}${delta}`, icon: up ? TrendUpIcon : TrendDownIcon }
+                  : undefined
+              }
+              chart={trend ? <Sparkline data={trend} color={metric.color} /> : undefined}
+            />
+          );
+        })}
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>AI recommendations</h3>
-            <p className="muted">Suggested inventory moves based on forecasted demand.</p>
-          </div>
-        </div>
+        <SectionHeader icon={SparkIcon} title="AI recommendations" subtitle="Suggested inventory moves based on forecasted demand." />
 
         <div className="recommendations-grid">
           {insights.recommendations.map((item) => (
@@ -41,12 +65,7 @@ export default function InsightsTab({ insights }) {
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Inventory risk alerts</h3>
-            <p className="muted">Monitor products that need immediate action or rebalancing.</p>
-          </div>
-        </div>
+        <SectionHeader icon={AlertIcon} title="Inventory risk alerts" subtitle="Products that need immediate action or rebalancing." />
 
         <div className="risk-alerts-list">
           {insights.alerts.map((alert) => (
@@ -62,12 +81,7 @@ export default function InsightsTab({ insights }) {
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>AI assistant</h3>
-            <p className="muted">Example questions and mock responses from your inventory advisor.</p>
-          </div>
-        </div>
+        <SectionHeader icon={ChatIcon} title="AI assistant" subtitle="Example questions and mock responses from your inventory advisor." />
 
         <div className="ai-chat-card">
           {insights.chat.map((entry) => (

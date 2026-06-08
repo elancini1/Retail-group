@@ -1,5 +1,7 @@
 import { useState } from "react";
 import EmptyState from "./EmptyState";
+import SectionHeader from "./SectionHeader";
+import { BoxIcon } from "./icons/Icons";
 
 const FILTERS = ["All", "Low stock", "Healthy"];
 
@@ -27,12 +29,7 @@ export default function InventoryTab({ stores }) {
 
   return (
     <section className="card section-card">
-      <div className="section-heading">
-        <div>
-          <h3>Inventory</h3>
-          <p className="muted">Search products, filter by stock status, and monitor stock across stores.</p>
-        </div>
-      </div>
+      <SectionHeader icon={BoxIcon} title="Inventory" subtitle="Search products, filter by stock status, and monitor stock across stores." />
 
       <div className="inventory-tools">
         <input

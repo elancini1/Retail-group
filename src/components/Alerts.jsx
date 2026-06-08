@@ -9,8 +9,7 @@ export default function Alerts({ stores }) {
   });
 
   return (
-    <div className="card alerts">
-      <h3>Stock Imbalance Alerts</h3>
+    <div className="alerts">
       {lowItems.length === 0 && (
         <EmptyState
           title="No stock alerts"

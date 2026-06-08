@@ -1,5 +1,7 @@
 import { useState } from "react";
 import usePersistentState from "../hooks/usePersistentState";
+import SectionHeader from "./SectionHeader";
+import { BuildingIcon, StoreIcon, BellIcon, SettingsIcon } from "./icons/Icons";
 
 const MOCK_COMPANY = {
   name: "Retail Group Inc.",
@@ -97,12 +99,7 @@ export default function Settings() {
   return (
     <>
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Company Information</h3>
-            <p className="muted">Basic details about your organization.</p>
-          </div>
-        </div>
+        <SectionHeader icon={BuildingIcon} title="Company Information" subtitle="Basic details about your organization." />
         <div className="settings-form-grid">
           <label className="settings-field">
             <span className="settings-label">Company name</span>
@@ -156,13 +153,12 @@ export default function Settings() {
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Store Management</h3>
-            <p className="muted">Manage the stores connected to your account.</p>
-          </div>
-          <button className="btn">+ Add store</button>
-        </div>
+        <SectionHeader
+          icon={StoreIcon}
+          title="Store Management"
+          subtitle="Manage the stores connected to your account."
+          action={<button className="btn">+ Add store</button>}
+        />
         <div className="settings-row-list">
           {stores.map((store) => (
             <div key={store.id} className="settings-list-row">
@@ -184,12 +180,7 @@ export default function Settings() {
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Notification Settings</h3>
-            <p className="muted">Choose which events trigger alerts for your team.</p>
-          </div>
-        </div>
+        <SectionHeader icon={BellIcon} title="Notification Settings" subtitle="Choose which events trigger alerts for your team." />
         <div className="settings-row-list">
           {NOTIF_ITEMS.map(({ key, label, desc }) => (
             <div key={key} className="settings-list-row">
@@ -207,12 +198,7 @@ export default function Settings() {
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>User Preferences</h3>
-            <p className="muted">Customize your personal dashboard experience.</p>
-          </div>
-        </div>
+        <SectionHeader icon={SettingsIcon} title="User Preferences" subtitle="Customize your personal dashboard experience." />
         <div className="settings-form-grid">
           <div className="settings-field">
             <span className="settings-label">Table density</span>

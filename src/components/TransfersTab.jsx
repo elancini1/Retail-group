@@ -1,5 +1,8 @@
 import EmptyState from "./EmptyState";
 import BarChart from "./charts/BarChart";
+import MetricTile from "./MetricTile";
+import SectionHeader from "./SectionHeader";
+import { TransferIcon, ClockIcon, CheckIcon, ChartBarsIcon, ListIcon } from "./icons/Icons";
 
 const STAGES = ["Requested", "Approved", "In Transit", "Received", "Reconciled"];
 
@@ -13,12 +16,7 @@ export default function TransfersTab({ transfers }) {
   if (transfers.length === 0) {
     return (
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Transfer requests</h3>
-            <p className="muted">Review requested shipments and their current status.</p>
-          </div>
-        </div>
+        <SectionHeader icon={ListIcon} title="Transfer requests" subtitle="Review requested shipments and their current status." />
         <EmptyState
           title="No transfer requests yet"
           message="Approve an AI suggestion from the side panel to create your first transfer request."
@@ -46,41 +44,19 @@ export default function TransfersTab({ transfers }) {
 
   return (
     <>
-      <section className="transfer-metrics">
-        <div className="stat-card">
-          <div className="stat-label">Total transfers</div>
-          <div className="stat-value">{transfers.length}</div>
-          <div className="stat-note">Open and historical requests</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">In transit</div>
-          <div className="stat-value">{inTransitCount}</div>
-          <div className="stat-note">Shipments currently moving</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Completed</div>
-          <div className="stat-value">{completedCount}</div>
-          <div className="stat-note">Transfers fully reconciled</div>
-        </div>
+      <section className="dash-tiles">
+        <MetricTile icon={TransferIcon} label="Total transfers" value={transfers.length} hint="Open and historical" tone="accent" />
+        <MetricTile icon={ClockIcon} label="In transit" value={inTransitCount} hint="Currently moving" tone="warn" />
+        <MetricTile icon={CheckIcon} label="Completed" value={completedCount} hint="Fully reconciled" tone="ok" />
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Transfers by status</h3>
-            <p className="muted">Distribution of all requests across their current status.</p>
-          </div>
-        </div>
+        <SectionHeader icon={ChartBarsIcon} title="Transfers by status" subtitle="How all requests are distributed across their current status." />
         <BarChart data={statusBreakdown} />
       </section>
 
       <section className="card section-card">
-        <div className="section-heading">
-          <div>
-            <h3>Transfer requests</h3>
-            <p className="muted">Review requested shipments and their current status.</p>
-          </div>
-        </div>
+        <SectionHeader icon={ListIcon} title="Transfer requests" subtitle="Review requested shipments and their current status." />
 
         <div className="transfer-table-wrap">
           <table className="transfer-table">
@@ -113,12 +89,7 @@ export default function TransfersTab({ transfers }) {
       </section>
 
       <section className="card section-card transfer-summary-card">
-        <div className="section-heading">
-          <div>
-            <h3>Transfer status timeline</h3>
-            <p className="muted">Track the current shipment progress through every stage.</p>
-          </div>
-        </div>
+        <SectionHeader icon={TransferIcon} title="Transfer status timeline" subtitle="Track the current shipment progress through every stage." />
 
         <div className="timeline">
           {STAGES.map((stage, index) => (
