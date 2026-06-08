@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import usePersistentState from "../hooks/usePersistentState";
 
 const MOCK_COMPANY = {
   name: "Retail Group Inc.",
@@ -62,20 +63,36 @@ function Toggle({ checked, onChange }) {
   );
 }
 
+const DEFAULT_SETTINGS = {
+  company: MOCK_COMPANY,
+  stores: MOCK_STORES,
+  notifs: MOCK_NOTIFICATIONS,
+  prefs: MOCK_PREFS,
+};
+
 export default function Settings() {
-  const [company, setCompany] = useState(MOCK_COMPANY);
-  const [stores, setStores] = useState(MOCK_STORES);
-  const [notifs, setNotifs] = useState(MOCK_NOTIFICATIONS);
-  const [prefs, setPrefs] = useState(MOCK_PREFS);
-  const [saved, setSaved] = useState(false);
+  // `saved` is the persisted snapshot; `draft` holds unsaved edits.
+  const [saved, setSaved] = usePersistentState("settings", DEFAULT_SETTINGS);
+  const [draft, setDraft] = useState(saved);
+  const [justSaved, setJustSaved] = useState(false);
+
+  const { company, stores, notifs, prefs } = draft;
+  const update = (patch) => setDraft((current) => ({ ...current, ...patch }));
+
+  const setCompany = (next) => update({ company: next });
+  const setNotifs = (next) => update({ notifs: next });
+  const setPrefs = (next) => update({ prefs: next });
 
   const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved(draft);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2000);
   };
 
+  const handleDiscard = () => setDraft(saved);
+
   const toggleStore = (id) =>
-    setStores(stores.map((s) => (s.id === id ? { ...s, active: !s.active } : s)));
+    update({ stores: stores.map((s) => (s.id === id ? { ...s, active: !s.active } : s)) });
 
   return (
     <>
@@ -229,20 +246,11 @@ export default function Settings() {
       </section>
 
       <div className="settings-save-bar">
-        <button
-          type="button"
-          className="filter-button"
-          onClick={() => {
-            setCompany(MOCK_COMPANY);
-            setStores(MOCK_STORES);
-            setNotifs(MOCK_NOTIFICATIONS);
-            setPrefs(MOCK_PREFS);
-          }}
-        >
+        <button type="button" className="filter-button" onClick={handleDiscard}>
           Discard changes
         </button>
         <button type="button" className="btn" onClick={handleSave}>
-          {saved ? "Saved!" : "Save changes"}
+          {justSaved ? "Saved!" : "Save changes"}
         </button>
       </div>
     </>

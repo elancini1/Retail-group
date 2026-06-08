@@ -1,4 +1,4 @@
-import React from "react";
+import EmptyState from "./EmptyState";
 
 function StoreCard({ store }) {
   const total = store.inventory.reduce((s, i) => s + i.qty, 0);
@@ -23,6 +23,15 @@ function StoreCard({ store }) {
 }
 
 export default function StoreOverview({ stores }) {
+  if (stores.length === 0) {
+    return (
+      <EmptyState
+        title="No stores yet"
+        message="Add a store to start tracking inventory and stock levels across locations."
+      />
+    );
+  }
+
   return (
     <div>
       <div className="store-cards">

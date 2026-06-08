@@ -1,21 +1,28 @@
-import React from "react";
+import EmptyState from "./EmptyState";
 
 export default function AIAssistant({ suggestions, onApprove }) {
   return (
     <div className="card ai-panel">
       <h3>AI Assistant</h3>
       <p className="muted">Suggestions to rebalance stock based on recent sales and inventory.</p>
-      {suggestions.map((s, i) => (
-        <div key={i} className="suggestion-row">
-          <div>
-            <strong>{s.product}</strong>
-            <div className="muted">{s.qty} units • {s.from} → {s.to}</div>
+      {suggestions.length === 0 ? (
+        <EmptyState
+          title="No suggestions right now"
+          message="Inventory looks balanced. New rebalancing suggestions will appear here as sales data comes in."
+        />
+      ) : (
+        suggestions.map((s, i) => (
+          <div key={i} className="suggestion-row">
+            <div>
+              <strong>{s.product}</strong>
+              <div className="muted">{s.qty} units • {s.from} → {s.to}</div>
+            </div>
+            <div>
+              <button className="btn" onClick={() => onApprove(s)}>Approve</button>
+            </div>
           </div>
-          <div>
-            <button className="btn" onClick={() => onApprove(s)}>Approve</button>
-          </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }

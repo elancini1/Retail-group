@@ -1,4 +1,4 @@
-import React from "react";
+import EmptyState from "./EmptyState";
 
 export default function Alerts({ stores }) {
   const lowItems = [];
@@ -11,7 +11,12 @@ export default function Alerts({ stores }) {
   return (
     <div className="card alerts">
       <h3>Stock Imbalance Alerts</h3>
-      {lowItems.length === 0 && <div className="muted">No alerts — all good.</div>}
+      {lowItems.length === 0 && (
+        <EmptyState
+          title="No stock alerts"
+          message="Every store is at or above its reorder level. Imbalances will show up here as stock runs low."
+        />
+      )}
       {lowItems.map((it) => (
         <div key={it.sku} className="alert-row">
           <div>
