@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./index.css";
 import Topbar from "./components/Topbar";
 import AIAssistant from "./components/AIAssistant";
@@ -10,6 +10,7 @@ import InsightsTab from "./components/InsightsTab";
 import Settings from "./components/Settings";
 import usePersistentState from "./hooks/usePersistentState";
 import useTheme from "./hooks/useTheme";
+import { supabase } from "./supabase";
 import { MOCK_STORES, MOCK_SUGGESTIONS, MOCK_TRANSFERS, MOCK_INSIGHTS } from "./data/mockData";
 import "./App.css";
 
@@ -26,9 +27,130 @@ const PAGE_META = {
 export default function App() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [theme, toggleTheme] = useTheme();
-  const [stores] = useState(MOCK_STORES);
+  const [stores, setStores] = useState(MOCK_STORES);
+  const [storesLoading, setStoresLoading] = useState(true);
+  const [storesError, setStoresError] = useState("");
   const [suggestions, setSuggestions] = usePersistentState("suggestions", MOCK_SUGGESTIONS);
-  const [transfers, setTransfers] = usePersistentState("transfers", MOCK_TRANSFERS);
+  const [transfers, setTransfers] = useState(MOCK_TRANSFERS);
+
+  useEffect(() => {
+    const loadStores = async () => {
+      setStoresLoading(true);
+      setStoresError("");
+      const [storesResponse, productsResponse, inventoryResponse] = await Promise.all([
+        supabase.from("stores").select("id, name, location, active"),
+        supabase.from("products").select("id, sku, name, category"),
+        supabase.from("inventory").select("id, store_id, product_id, quantity, reorder_level"),
+      ]);
+
+      const hasError = storesResponse.error || productsResponse.error || inventoryResponse.error;
+      const hasData = storesResponse.data && productsResponse.data && inventoryResponse.data;
+
+      if (hasError || !hasData) {
+        setStores(MOCK_STORES);
+
+        const tableErrors = [];
+        if (storesResponse.error) {
+          console.error("storesResponse.error:", storesResponse.error);
+          tableErrors.push(`stores: ${storesResponse.error.message || JSON.stringify(storesResponse.error)}`);
+        }
+        if (productsResponse.error) {
+          console.error("productsResponse.error:", productsResponse.error);
+          tableErrors.push(`products: ${productsResponse.error.message || JSON.stringify(productsResponse.error)}`);
+        }
+        if (inventoryResponse.error) {
+          console.error("inventoryResponse.error:", inventoryResponse.error);
+          tableErrors.push(`inventory: ${inventoryResponse.error.message || JSON.stringify(inventoryResponse.error)}`);
+        }
+
+        if (tableErrors.length > 0) {
+          setStoresError(`Failed to load: ${tableErrors.join("; ")}. Showing mock stores.`);
+        } else {
+          setStoresError("Live store data is incomplete. Showing mock stores instead.");
+        }
+      } else {
+        const productById = Object.fromEntries(
+          productsResponse.data.map((p) => [p.id, p])
+        );
+
+        const inventoryByStoreId = inventoryResponse.data.reduce((acc, inv) => {
+          const product = productById[inv.product_id];
+          if (!product) return acc;
+
+          const item = {
+            sku: product.sku,
+            name: product.name,
+            qty: inv.quantity,
+            reorder: inv.reorder_level,
+          };
+
+          if (!acc[inv.store_id]) acc[inv.store_id] = [];
+          acc[inv.store_id].push(item);
+          return acc;
+        }, {});
+
+        const finalStores = storesResponse.data.map((store) => ({
+          id: store.id,
+          name: store.name,
+          location: store.location || "",
+          active: store.active,
+          inventory: inventoryByStoreId[store.id] || [],
+        }));
+
+        setStores(finalStores);
+      }
+
+      setStoresLoading(false);
+    };
+
+    loadStores();
+  }, []);
+
+  useEffect(() => {
+    const loadTransfers = async () => {
+      const [transfersResponse, transferItemsResponse, productsResponse, storesResponse] = await Promise.all([
+        supabase.from("transfers").select("id, from_store_id, to_store_id, status, date"),
+        supabase.from("transfer_items").select("transfer_id, product_id, quantity"),
+        supabase.from("products").select("id, name"),
+        supabase.from("stores").select("id, name"),
+      ]);
+
+      const hasError = transfersResponse.error || transferItemsResponse.error || productsResponse.error || storesResponse.error;
+      const hasData = transfersResponse.data && transferItemsResponse.data && productsResponse.data && storesResponse.data;
+
+      if (hasError || !hasData) {
+        setTransfers(MOCK_TRANSFERS);
+        return;
+      }
+
+      const productById = Object.fromEntries(productsResponse.data.map((p) => [p.id, p]));
+      const storeById = Object.fromEntries(storesResponse.data.map((s) => [s.id, s]));
+
+      const mappedTransfers = [];
+      for (const transfer of transfersResponse.data) {
+        const items = transferItemsResponse.data.filter((item) => item.transfer_id === transfer.id);
+        for (const item of items) {
+          const product = productById[item.product_id];
+          const fromStore = storeById[transfer.from_store_id];
+          const toStore = storeById[transfer.to_store_id];
+
+          mappedTransfers.push({
+            id: transfer.id,
+            product: product?.name || "Unknown",
+            from: fromStore?.name || "Unknown",
+            to: toStore?.name || "Unknown",
+            qty: item.quantity,
+            status: transfer.status,
+            date: transfer.date,
+          });
+        }
+      }
+
+      setTransfers(mappedTransfers);
+    };
+
+    loadTransfers();
+  }, []);
 
   const handleApprove = (suggestion) => {
     const nextId = transfers.reduce((max, t) => Math.max(max, t.id), 0) + 1;
@@ -74,6 +196,12 @@ export default function App() {
           <h1>{activeTab}</h1>
           <p className="muted">{PAGE_META[activeTab]}</p>
         </div>
+
+        {(storesLoading || storesError) && (
+          <div className="stores-status" style={{ marginBottom: "1rem" }}>
+            {storesLoading ? "Loading stores…" : storesError}
+          </div>
+        )}
 
         <div className="page-grid">
           <main className="main-content">{renderMainContent()}</main>
