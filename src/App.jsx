@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./index.css";
 import Topbar from "./components/Topbar";
 import AIAssistant from "./components/AIAssistant";
@@ -11,10 +11,20 @@ import Settings from "./components/Settings";
 import usePersistentState from "./hooks/usePersistentState";
 import useTheme from "./hooks/useTheme";
 import { supabase } from "./supabase";
+import { computeInsightMetrics } from "./lib/insights";
 import { MOCK_STORES, MOCK_SUGGESTIONS, MOCK_TRANSFERS, MOCK_INSIGHTS } from "./data/mockData";
 import "./App.css";
 
 const TABS = ["Dashboard", "Inventory", "Transfers", "Insights", "Settings"];
+
+// Supabase stores transfer timestamps in `created_at`; render them like the
+// rest of the UI (e.g. "Jun 8, 2026"), tolerating null/invalid values.
+function formatTransferDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
 const PAGE_META = {
   Dashboard: "Inventory health, transfers, and alerts at a glance.",
@@ -109,7 +119,7 @@ export default function App() {
   useEffect(() => {
     const loadTransfers = async () => {
       const [transfersResponse, transferItemsResponse, productsResponse, storesResponse] = await Promise.all([
-        supabase.from("transfers").select("id, from_store_id, to_store_id, status, date"),
+        supabase.from("transfers").select("id, from_store_id, to_store_id, status, created_at"),
         supabase.from("transfer_items").select("transfer_id, product_id, quantity"),
         supabase.from("products").select("id, name"),
         supabase.from("stores").select("id, name"),
@@ -141,7 +151,7 @@ export default function App() {
             to: toStore?.name || "Unknown",
             qty: item.quantity,
             status: transfer.status,
-            date: transfer.date,
+            date: formatTransferDate(transfer.created_at),
           });
         }
       }
@@ -166,6 +176,13 @@ export default function App() {
     setSuggestions(suggestions.filter((item) => item !== suggestion));
   };
 
+  // Insights metrics are derived from live stores/transfers; recommendations,
+  // alerts, and chat remain mock for now (alerts handled in a later task).
+  const insights = useMemo(
+    () => ({ ...MOCK_INSIGHTS, metrics: computeInsightMetrics(stores, transfers) }),
+    [stores, transfers]
+  );
+
   const renderMainContent = () => {
     switch (activeTab) {
       case "Inventory":
@@ -173,7 +190,7 @@ export default function App() {
       case "Transfers":
         return <TransfersTab transfers={transfers} />;
       case "Insights":
-        return <InsightsTab insights={MOCK_INSIGHTS} />;
+        return <InsightsTab insights={insights} />;
       case "Settings":
         return <Settings />;
       default:

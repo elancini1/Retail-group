@@ -7,17 +7,17 @@ export default function Sparkline({ data, width = 160, height = 46, color = "var
   const pad = 5; // vertical breathing room so peaks/troughs aren't clipped
   const max = Math.max(...data);
   const min = Math.min(...data);
-  const range = max - min || 1;
+  const range = max - min;
   const step = width / (data.length - 1);
   const usableH = height - pad * 2;
 
-  const points = data.map((d, i) => {
-    const x = (i * step).toFixed(1);
-    const y = (pad + usableH - ((d - min) / range) * usableH).toFixed(1);
-    return `${x},${y}`;
-  });
-  const line = points.join(" ");
+  // When every value is equal, center the line instead of pinning it to the floor.
+  const yFor = (d) => (range === 0 ? height / 2 : pad + usableH - ((d - min) / range) * usableH);
+
+  const coords = data.map((d, i) => [Number((i * step).toFixed(1)), Number(yFor(d).toFixed(1))]);
+  const line = coords.map((c) => c.join(",")).join(" ");
   const area = `0,${height} ${line} ${width},${height}`;
+  const [lastX, lastY] = coords[coords.length - 1];
 
   return (
     <svg
@@ -42,6 +42,17 @@ export default function Sparkline({ data, width = 160, height = 46, color = "var
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      {/* current-value marker (degenerate round-capped line stays circular under non-uniform scaling) */}
+      <line
+        x1={lastX}
+        y1={lastY}
+        x2={lastX}
+        y2={lastY}
+        stroke={color}
+        strokeWidth="5"
+        strokeLinecap="round"
         vectorEffect="non-scaling-stroke"
       />
     </svg>

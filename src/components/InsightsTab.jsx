@@ -1,48 +1,33 @@
 import Sparkline from "./charts/Sparkline";
 import MetricTile from "./MetricTile";
 import SectionHeader from "./SectionHeader";
-import {
-  ShieldIcon,
-  TransferIcon,
-  HeartPulseIcon,
-  SparkIcon,
-  AlertIcon,
-  ChatIcon,
-  TrendUpIcon,
-  TrendDownIcon,
-} from "./icons/Icons";
+import { TransferIcon, HeartPulseIcon, ChartBarsIcon, SparkIcon, AlertIcon, ChatIcon } from "./icons/Icons";
 
 const METRIC_ICONS = {
-  "Stockouts prevented": ShieldIcon,
+  "Inventory health": HeartPulseIcon,
+  "Inventory balance": ChartBarsIcon,
   "Transfer efficiency": TransferIcon,
-  "Inventory balance": HeartPulseIcon,
 };
 
 export default function InsightsTab({ insights }) {
   return (
     <>
       <section className="dash-tiles">
-        {insights.metrics.map((metric) => {
-          const trend = metric.trend;
-          const delta = trend ? trend[trend.length - 1] - trend[0] : 0;
-          const up = delta >= 0;
-          return (
-            <MetricTile
-              key={metric.label}
-              icon={METRIC_ICONS[metric.label] || SparkIcon}
-              label={metric.label}
-              value={metric.value}
-              hint="Last 8 weeks"
-              tone="accent"
-              trend={
-                trend
-                  ? { dir: up ? "up" : "down", label: `${up ? "+" : ""}${delta}`, icon: up ? TrendUpIcon : TrendDownIcon }
-                  : undefined
-              }
-              chart={trend ? <Sparkline data={trend} color={metric.color} /> : undefined}
-            />
-          );
-        })}
+        {insights.metrics.map((metric) => (
+          <MetricTile
+            key={metric.label}
+            icon={METRIC_ICONS[metric.label] || SparkIcon}
+            label={metric.label}
+            value={metric.value}
+            hint={metric.hint}
+            tone={metric.tone || "accent"}
+            chart={
+              metric.trend && metric.trend.length >= 2 ? (
+                <Sparkline data={metric.trend} color={metric.color} />
+              ) : undefined
+            }
+          />
+        ))}
       </section>
 
       <section className="card section-card">
