@@ -12,6 +12,7 @@ import usePersistentState from "./hooks/usePersistentState";
 import useTheme from "./hooks/useTheme";
 import { supabase } from "./supabase";
 import { computeInsightMetrics } from "./lib/insights";
+import { generateRecommendations } from "./lib/recommendations";
 import { MOCK_STORES, MOCK_SUGGESTIONS, MOCK_TRANSFERS, MOCK_INSIGHTS } from "./data/mockData";
 import "./App.css";
 
@@ -34,6 +35,22 @@ const PAGE_META = {
   Settings: "Manage your company, stores, and preferences.",
 };
 
+function buildRecommendationKey(product, from, to, qty) {
+  return `${product}|${from}|${to}|${qty}`;
+}
+
+function getNextTransferId(transfers) {
+  const numericIds = transfers
+    .map((transfer) => Number(transfer.id))
+    .filter((id) => Number.isInteger(id) && id > 0);
+
+  if (numericIds.length > 0) {
+    return Math.max(...numericIds) + 1;
+  }
+
+  return transfers.length + 1;
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [theme, toggleTheme] = useTheme();
@@ -42,6 +59,7 @@ export default function App() {
   const [storesError, setStoresError] = useState("");
   const [suggestions, setSuggestions] = usePersistentState("suggestions", MOCK_SUGGESTIONS);
   const [transfers, setTransfers] = useState(MOCK_TRANSFERS);
+  const [approvedKeys, setApprovedKeys] = usePersistentState("approvedKeys", []);
 
   useEffect(() => {
     const loadStores = async () => {
@@ -163,25 +181,68 @@ export default function App() {
   }, []);
 
   const handleApprove = (suggestion) => {
-    const nextId = transfers.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+    const nextId = getNextTransferId(transfers);
     const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    setTransfers([
+
+    setTransfers((currentTransfers) => [
       { id: nextId, product: suggestion.product, from: suggestion.from, to: suggestion.to, qty: suggestion.qty, status: "Approved", date: today },
-      ...transfers,
+      ...currentTransfers,
     ]);
-    setSuggestions(suggestions.filter((item) => item !== suggestion));
+
+    setSuggestions((currentSuggestions) => currentSuggestions.filter((item) => item !== suggestion));
+
+    const key = buildRecommendationKey(suggestion.product, suggestion.from, suggestion.to, suggestion.qty);
+    setApprovedKeys((currentKeys) =>
+      currentKeys.includes(key) ? currentKeys : [...currentKeys, key]
+    );
   };
 
   const handleDismiss = (suggestion) => {
-    setSuggestions(suggestions.filter((item) => item !== suggestion));
+    setSuggestions((currentSuggestions) => currentSuggestions.filter((item) => item !== suggestion));
   };
 
-  // Insights metrics are derived from live stores/transfers; recommendations,
-  // alerts, and chat remain mock for now (alerts handled in a later task).
-  const insights = useMemo(
-    () => ({ ...MOCK_INSIGHTS, metrics: computeInsightMetrics(stores, transfers) }),
-    [stores, transfers]
+  const generatedRecommendations = useMemo(
+    () => generateRecommendations(stores),
+    [stores]
   );
+
+  const filteredGeneratedRecommendations = useMemo(() => {
+    return generatedRecommendations.filter((rec) => {
+      const key = buildRecommendationKey(rec.product, rec.from, rec.to, rec.qty);
+      return !approvedKeys.includes(key);
+    });
+  }, [generatedRecommendations, approvedKeys]);
+
+  const insights = useMemo(
+    () => ({
+      ...MOCK_INSIGHTS,
+      metrics: computeInsightMetrics(stores, transfers),
+      recommendations: filteredGeneratedRecommendations,
+    }),
+    [stores, transfers, filteredGeneratedRecommendations]
+  );
+
+  const aiSuggestions = useMemo(() => {
+    if (filteredGeneratedRecommendations.length > 0) {
+      return filteredGeneratedRecommendations.map((recommendation) => ({
+        product: recommendation.product,
+        qty: recommendation.qty,
+        from: recommendation.from,
+        to: recommendation.to,
+      }));
+    }
+
+    if (generatedRecommendations.length === 0) {
+      return suggestions;
+    }
+
+    return [];
+  }, [filteredGeneratedRecommendations, generatedRecommendations, suggestions]);
+
+  const aiSuggestionActions =
+    filteredGeneratedRecommendations.length === 0 && generatedRecommendations.length === 0
+      ? handleDismiss
+      : undefined;
 
   const renderMainContent = () => {
     switch (activeTab) {
@@ -224,7 +285,7 @@ export default function App() {
           <main className="main-content">{renderMainContent()}</main>
 
           <aside className="insights-panel">
-            <AIAssistant suggestions={suggestions} onApprove={handleApprove} onDismiss={handleDismiss} />
+            <AIAssistant suggestions={aiSuggestions} onApprove={handleApprove} onDismiss={aiSuggestionActions} />
             <TransferTracking transfers={transfers} />
           </aside>
         </div>

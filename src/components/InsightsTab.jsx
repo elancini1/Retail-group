@@ -34,18 +34,24 @@ export default function InsightsTab({ insights }) {
         <SectionHeader icon={SparkIcon} title="AI recommendations" subtitle="Suggested inventory moves based on forecasted demand." />
 
         <div className="recommendations-grid">
-          {insights.recommendations.map((item) => (
-            <div key={item.title} className="recommendation-card">
-              <div className="recommendation-copy">
-                <strong>{item.title}</strong>
-                <p className="muted">Expected impact: {item.impact}</p>
-              </div>
-              <div className="recommendation-footer">
-                <span className="confidence-chip">{item.confidence} confidence</span>
-                <button type="button" className="btn recommendation-action">{item.action}</button>
-              </div>
+          {insights.recommendations.length === 0 ? (
+            <div className="recommendation-empty">
+              <p className="muted">No recommendations right now.</p>
             </div>
-          ))}
+          ) : (
+            insights.recommendations.map((item) => (
+              <div key={item.title} className="recommendation-card">
+                <div className="recommendation-copy">
+                  <strong>{item.title}</strong>
+                  <p className="muted">Expected impact: {item.impact}</p>
+                </div>
+                <div className="recommendation-footer">
+                  <span className="confidence-chip">{item.confidence} confidence</span>
+                  <button type="button" className="btn recommendation-action">{item.action}</button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
