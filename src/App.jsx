@@ -57,9 +57,14 @@ export default function App() {
   const [stores, setStores] = useState(MOCK_STORES);
   const [storesLoading, setStoresLoading] = useState(true);
   const [storesError, setStoresError] = useState("");
+  const [transferError, setTransferError] = useState("");
+  const [productNameToId, setProductNameToId] = useState({});
+  const [storeNameToId, setStoreNameToId] = useState({});
   const [suggestions, setSuggestions] = usePersistentState("suggestions", MOCK_SUGGESTIONS);
   const [transfers, setTransfers] = useState(MOCK_TRANSFERS);
   const [approvedKeys, setApprovedKeys] = usePersistentState("approvedKeys", []);
+  const [rejectedKeys, setRejectedKeys] = usePersistentState("rejectedKeys", []);
+  const [selectedTransferId, setSelectedTransferId] = useState(null);
 
   useEffect(() => {
     const loadStores = async () => {
@@ -128,6 +133,13 @@ export default function App() {
         setStores(finalStores);
       }
 
+      if (productsResponse.data) {
+        setProductNameToId(Object.fromEntries(productsResponse.data.map((p) => [p.name, p.id])));
+      }
+      if (storesResponse.data) {
+        setStoreNameToId(Object.fromEntries(storesResponse.data.map((s) => [s.name, s.id])));
+      }
+
       setStoresLoading(false);
     };
 
@@ -180,12 +192,61 @@ export default function App() {
     loadTransfers();
   }, []);
 
-  const handleApprove = (suggestion) => {
-    const nextId = getNextTransferId(transfers);
+  const handleApprove = async (suggestion) => {
+    setTransferError("");
+
+    const fromStoreId = storeNameToId[suggestion.from] || stores.find((store) => store.name === suggestion.from)?.id;
+    const toStoreId = storeNameToId[suggestion.to] || stores.find((store) => store.name === suggestion.to)?.id;
+    const productId = productNameToId[suggestion.product];
+
+    if (!fromStoreId || !toStoreId || !productId) {
+      setTransferError(
+        "Unable to approve transfer: missing store or product IDs from loaded data. Please refresh and try again."
+      );
+      return;
+    }
+
+    const transferId = crypto.randomUUID();
+    const { data: insertedTransfer, error: transferInsertError } = await supabase
+      .from("transfers")
+      .insert([
+        {
+          id: transferId,
+          from_store_id: fromStoreId,
+          to_store_id: toStoreId,
+          status: "Approved",
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select("id")
+      .single();
+
+    if (transferInsertError || !insertedTransfer?.id) {
+      console.error("transfer insert failed:", transferInsertError);
+      setTransferError(`Failed to save transfer: ${transferInsertError?.message || "Unknown error."}`);
+      return;
+    }
+
+    const { error: transferItemError } = await supabase.from("transfer_items").insert([
+      {
+        id: crypto.randomUUID(),
+        transfer_id: transferId,
+        product_id: productId,
+        quantity: suggestion.qty,
+      },
+    ]);
+
+    if (transferItemError) {
+      console.error("transfer item insert failed:", transferItemError);
+      await supabase.from("transfers").delete().eq("id", transferId);
+      setTransferError(`Failed to save transfer item: ${transferItemError.message || "Unknown error."}`);
+      return;
+    }
+
     const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
     setTransfers((currentTransfers) => [
-      { id: nextId, product: suggestion.product, from: suggestion.from, to: suggestion.to, qty: suggestion.qty, status: "Approved", date: today },
+      { id: transferId, product: suggestion.product, from: suggestion.from, to: suggestion.to, qty: suggestion.qty, status: "Approved", date: today },
       ...currentTransfers,
     ]);
 
@@ -197,8 +258,35 @@ export default function App() {
     );
   };
 
-  const handleDismiss = (suggestion) => {
+  const handleReject = (suggestion) => {
+    const key = buildRecommendationKey(suggestion.product, suggestion.from, suggestion.to, suggestion.qty);
+    setRejectedKeys((currentKeys) =>
+      currentKeys.includes(key) ? currentKeys : [...currentKeys, key]
+    );
     setSuggestions((currentSuggestions) => currentSuggestions.filter((item) => item !== suggestion));
+  };
+
+  const handleUpdateTransferStatus = async (transferId, newStatus) => {
+    setTransferError("");
+
+    const { error: updateError } = await supabase
+      .from("transfers")
+      .update({ status: newStatus })
+      .eq("id", transferId);
+
+    if (updateError) {
+      console.error("transfer status update failed:", updateError);
+      setTransferError(`Failed to update transfer status: ${updateError.message || "Unknown error."}`);
+      return false;
+    }
+
+    setTransfers((currentTransfers) =>
+      currentTransfers.map((item) =>
+        String(item.id) === String(transferId) ? { ...item, status: newStatus } : item
+      )
+    );
+
+    return true;
   };
 
   const generatedRecommendations = useMemo(
@@ -209,9 +297,9 @@ export default function App() {
   const filteredGeneratedRecommendations = useMemo(() => {
     return generatedRecommendations.filter((rec) => {
       const key = buildRecommendationKey(rec.product, rec.from, rec.to, rec.qty);
-      return !approvedKeys.includes(key);
+      return !approvedKeys.includes(key) && !rejectedKeys.includes(key);
     });
-  }, [generatedRecommendations, approvedKeys]);
+  }, [generatedRecommendations, approvedKeys, rejectedKeys]);
 
   const insights = useMemo(
     () => ({
@@ -221,6 +309,13 @@ export default function App() {
     }),
     [stores, transfers, filteredGeneratedRecommendations]
   );
+
+  const filteredSuggestions = useMemo(() => {
+    return suggestions.filter((suggestion) => {
+      const key = buildRecommendationKey(suggestion.product, suggestion.from, suggestion.to, suggestion.qty);
+      return !approvedKeys.includes(key) && !rejectedKeys.includes(key);
+    });
+  }, [suggestions, approvedKeys, rejectedKeys]);
 
   const aiSuggestions = useMemo(() => {
     if (filteredGeneratedRecommendations.length > 0) {
@@ -233,23 +328,34 @@ export default function App() {
     }
 
     if (generatedRecommendations.length === 0) {
-      return suggestions;
+      return filteredSuggestions;
     }
 
     return [];
-  }, [filteredGeneratedRecommendations, generatedRecommendations, suggestions]);
+  }, [filteredGeneratedRecommendations, generatedRecommendations, filteredSuggestions]);
 
-  const aiSuggestionActions =
-    filteredGeneratedRecommendations.length === 0 && generatedRecommendations.length === 0
-      ? handleDismiss
-      : undefined;
+  useEffect(() => {
+    if (!selectedTransferId && transfers.length > 0) {
+      setSelectedTransferId(String(transfers[0].id));
+    }
+  }, [transfers, selectedTransferId]);
+
+  const selectedTransfer = transfers.find((item) => String(item.id) === String(selectedTransferId)) || transfers[0];
 
   const renderMainContent = () => {
     switch (activeTab) {
       case "Inventory":
         return <InventoryTab stores={stores} />;
       case "Transfers":
-        return <TransfersTab transfers={transfers} />;
+        return (
+          <TransfersTab
+            transfers={transfers}
+            selectedTransfer={selectedTransfer}
+            selectedTransferId={selectedTransferId}
+            onSelectTransfer={setSelectedTransferId}
+            onUpdateTransferStatus={handleUpdateTransferStatus}
+          />
+        );
       case "Insights":
         return <InsightsTab insights={insights} />;
       case "Settings":
@@ -275,9 +381,11 @@ export default function App() {
           <p className="muted">{PAGE_META[activeTab]}</p>
         </div>
 
-        {(storesLoading || storesError) && (
+        {(storesLoading || storesError || transferError) && (
           <div className="stores-status" style={{ marginBottom: "1rem" }}>
-            {storesLoading ? "Loading stores…" : storesError}
+            {storesLoading
+              ? "Loading stores…"
+              : [storesError, transferError].filter(Boolean).join(" ")}
           </div>
         )}
 
@@ -285,7 +393,7 @@ export default function App() {
           <main className="main-content">{renderMainContent()}</main>
 
           <aside className="insights-panel">
-            <AIAssistant suggestions={aiSuggestions} onApprove={handleApprove} onDismiss={aiSuggestionActions} />
+            <AIAssistant suggestions={aiSuggestions} onApprove={handleApprove} onReject={handleReject} />
             <TransferTracking transfers={transfers} />
           </aside>
         </div>
