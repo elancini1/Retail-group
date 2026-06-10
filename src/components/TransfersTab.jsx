@@ -12,7 +12,14 @@ function statusPillClass(status) {
   return "status-pill status-approved";
 }
 
-export default function TransfersTab({ transfers }) {
+function getNextStatusAction(currentStatus) {
+  if (currentStatus === "Approved") return { label: "Mark In Transit", nextStatus: "In Transit" };
+  if (currentStatus === "In Transit") return { label: "Mark Received", nextStatus: "Received" };
+  if (currentStatus === "Received") return { label: "Mark Reconciled", nextStatus: "Reconciled" };
+  return null;
+}
+
+export default function TransfersTab({ transfers, selectedTransfer, selectedTransferId, onSelectTransfer, onUpdateTransferStatus }) {
   if (transfers.length === 0) {
     return (
       <section className="card section-card">
@@ -33,7 +40,6 @@ export default function TransfersTab({ transfers }) {
     { label: "In Transit", value: inTransitCount, color: "#f59e0b" },
     { label: "Reconciled", value: completedCount, color: "#64748b" },
   ];
-  const selectedTransfer = transfers.find((item) => item.status === "In Transit") || transfers[0];
   const currentStageIndex = STAGES.indexOf(
     selectedTransfer.status === "Approved"
       ? "Approved"
@@ -71,18 +77,28 @@ export default function TransfersTab({ transfers }) {
               </tr>
             </thead>
             <tbody>
-              {transfers.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.product}</td>
-                  <td>{item.from}</td>
-                  <td>{item.to}</td>
-                  <td>{item.qty}</td>
-                  <td>
-                    <span className={statusPillClass(item.status)}>{item.status}</span>
-                  </td>
-                  <td>{item.date}</td>
-                </tr>
-              ))}
+              {transfers.map((item) => {
+                const isSelected = String(item.id) === String(selectedTransferId);
+                return (
+                  <tr
+                    key={item.id}
+                    onClick={() => onSelectTransfer(item.id)}
+                    style={{
+                      background: isSelected ? "#eef4ff" : undefined,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <td>{item.product}</td>
+                    <td>{item.from}</td>
+                    <td>{item.to}</td>
+                    <td>{item.qty}</td>
+                    <td>
+                      <span className={statusPillClass(item.status)}>{item.status}</span>
+                    </td>
+                    <td>{item.date}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -123,6 +139,22 @@ export default function TransfersTab({ transfers }) {
               <span className={statusPillClass(selectedTransfer.status)}>{selectedTransfer.status}</span>
             </div>
           </div>
+          {getNextStatusAction(selectedTransfer.status) && (
+            <div className="detail-card detail-full">
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() =>
+                  onUpdateTransferStatus(
+                    selectedTransfer.id,
+                    getNextStatusAction(selectedTransfer.status).nextStatus
+                  )
+                }
+              >
+                {getNextStatusAction(selectedTransfer.status).label}
+              </button>
+            </div>
+          )}
         </div>
       </section>
     </>

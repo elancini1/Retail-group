@@ -1,7 +1,7 @@
 import EmptyState from "./EmptyState";
 import { SparkIcon, ArrowRightIcon } from "./icons/Icons";
 
-export default function AIAssistant({ suggestions, onApprove, onDismiss }) {
+export default function AIAssistant({ suggestions, onApprove, onReject }) {
   return (
     <div className="ai-hero">
       <div className="ai-hero-head">
@@ -39,9 +39,9 @@ export default function AIAssistant({ suggestions, onApprove, onDismiss }) {
                 <button type="button" className="btn btn-sm" onClick={() => onApprove(s)}>
                   Approve
                 </button>
-                {onDismiss && (
-                  <button type="button" className="btn-ghost btn-sm" onClick={() => onDismiss(s)}>
-                    Dismiss
+                {onReject && (
+                  <button type="button" className="btn-ghost btn-sm" onClick={() => onReject(s)}>
+                    Reject
                   </button>
                 )}
               </div>
