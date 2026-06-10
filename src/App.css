@@ -608,6 +608,20 @@
   border: 1px solid var(--border);
   border-left: 3px solid var(--warning);
 }
+.risk-alert.risk-danger {
+  border-left-color: var(--danger);
+}
+.risk-alert.risk-warn {
+  border-left-color: var(--warning);
+}
+.alert-pill.alert-danger {
+  color: var(--danger-text);
+  background: var(--danger-bg);
+}
+.alert-pill.alert-warn {
+  color: var(--warn-text);
+  background: var(--warn-bg);
+}
 .ai-chat-card {
   display: grid;
   gap: 14px;
@@ -794,6 +808,19 @@
 }
 .empty-state p {
   margin-top: 8px;
+}
+
+/* Inline empty state for recommendations / risk alerts inside a card */
+.recommendation-empty {
+  grid-column: 1 / -1;
+  padding: 20px;
+  text-align: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+.recommendation-empty p {
+  margin: 0;
 }
 
 /* ── Transfers ─────────────────────────────────────────── */

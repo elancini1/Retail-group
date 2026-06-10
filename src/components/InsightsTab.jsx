@@ -59,15 +59,21 @@ export default function InsightsTab({ insights }) {
         <SectionHeader icon={AlertIcon} title="Inventory risk alerts" subtitle="Products that need immediate action or rebalancing." />
 
         <div className="risk-alerts-list">
-          {insights.alerts.map((alert) => (
-            <div key={alert.product} className="risk-alert">
-              <div>
-                <strong>{alert.product}</strong>
-                <div className="muted">{alert.detail}</div>
-              </div>
-              <span className="alert-pill">{alert.type}</span>
+          {insights.alerts.length === 0 ? (
+            <div className="recommendation-empty">
+              <p className="muted">No risk alerts — inventory looks balanced.</p>
             </div>
-          ))}
+          ) : (
+            insights.alerts.map((alert) => (
+              <div key={alert.id} className={`risk-alert risk-${alert.severity}`}>
+                <div>
+                  <strong>{alert.product}</strong>
+                  <div className="muted">{alert.detail}</div>
+                </div>
+                <span className={`alert-pill alert-${alert.severity}`}>{alert.type}</span>
+              </div>
+            ))
+          )}
         </div>
       </section>
 

@@ -87,3 +87,44 @@ export function computeInsightMetrics(stores, transfers) {
     },
   ];
 }
+
+/**
+ * Inventory risk alerts derived from live inventory. A line below its reorder
+ * level is a stockout risk; a line stocked well above it (see EXCESS_MULTIPLIER)
+ * is excess inventory. Stockout risks are surfaced first.
+ */
+export function generateRiskAlerts(stores) {
+  const alerts = [];
+
+  stores.forEach((store) => {
+    store.inventory.forEach((item) => {
+      if (isLowStock(item)) {
+        alerts.push({
+          id: `${store.name}-${item.sku}-low`,
+          product: item.name,
+          store: store.name,
+          type: "Stockout risk",
+          severity: "danger",
+          detail: `${store.name} — ${item.qty} units, below reorder of ${item.reorder}`,
+          magnitude: item.reorder - item.qty,
+        });
+      } else if (isExcessStock(item)) {
+        alerts.push({
+          id: `${store.name}-${item.sku}-excess`,
+          product: item.name,
+          store: store.name,
+          type: "Excess inventory",
+          severity: "warn",
+          detail: `${store.name} — ${item.qty} units, ${item.qty - item.reorder} above reorder level`,
+          magnitude: item.qty - item.reorder,
+        });
+      }
+    });
+  });
+
+  // Stockout risks first, then by how far off target each line is.
+  return alerts.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === "danger" ? -1 : 1;
+    return b.magnitude - a.magnitude;
+  });
+}

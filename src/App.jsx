@@ -11,7 +11,7 @@ import Settings from "./components/Settings";
 import usePersistentState from "./hooks/usePersistentState";
 import useTheme from "./hooks/useTheme";
 import { supabase } from "./supabase";
-import { computeInsightMetrics } from "./lib/insights";
+import { computeInsightMetrics, generateRiskAlerts } from "./lib/insights";
 import { generateRecommendations } from "./lib/recommendations";
 import { MOCK_STORES, MOCK_SUGGESTIONS, MOCK_TRANSFERS, MOCK_INSIGHTS } from "./data/mockData";
 import "./App.css";
@@ -218,6 +218,7 @@ export default function App() {
       ...MOCK_INSIGHTS,
       metrics: computeInsightMetrics(stores, transfers),
       recommendations: filteredGeneratedRecommendations,
+      alerts: generateRiskAlerts(stores),
     }),
     [stores, transfers, filteredGeneratedRecommendations]
   );

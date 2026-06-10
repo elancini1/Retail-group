@@ -2,8 +2,6 @@
 // This helper stays beginner-friendly and uses only the existing store item
 // shape: { sku, name, qty, reorder }.
 
-const LOW_STOCK_LABEL = "Low stock";
-
 function isLowStock(item) {
   return (
     item &&
