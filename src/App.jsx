@@ -294,7 +294,7 @@ export default function App() {
       ...MOCK_INSIGHTS,
       metrics: computeInsightMetrics(stores, transfers),
       recommendations: filteredGeneratedRecommendations,
-      alerts: generateRiskAlerts(stores),
+      alerts: generateRiskAlerts(stores, transfers),
     }),
     [stores, transfers, filteredGeneratedRecommendations]
   );

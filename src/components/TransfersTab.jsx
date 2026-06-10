@@ -40,12 +40,9 @@ export default function TransfersTab({ transfers, selectedTransfer, selectedTran
     { label: "In Transit", value: inTransitCount, color: "#f59e0b" },
     { label: "Reconciled", value: completedCount, color: "#64748b" },
   ];
-  const currentStageIndex = STAGES.indexOf(
-    selectedTransfer.status === "Approved"
-      ? "Approved"
-      : selectedTransfer.status === "In Transit"
-      ? "In Transit"
-      : "Reconciled"
+  const currentStageIndex = Math.max(
+    0,
+    STAGES.indexOf(selectedTransfer.status || "Requested")
   );
 
   return (

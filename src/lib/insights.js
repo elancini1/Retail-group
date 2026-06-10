@@ -93,21 +93,44 @@ export function computeInsightMetrics(stores, transfers) {
  * level is a stockout risk; a line stocked well above it (see EXCESS_MULTIPLIER)
  * is excess inventory. Stockout risks are surfaced first.
  */
-export function generateRiskAlerts(stores) {
+export function generateRiskAlerts(stores, transfers = []) {
   const alerts = [];
 
   stores.forEach((store) => {
     store.inventory.forEach((item) => {
+      const incomingTransfers = transfers.filter(
+        (transfer) =>
+          transfer.to === store.name &&
+          transfer.product === item.name &&
+          ["Approved", "In Transit", "Received"].includes(transfer.status)
+      );
+
       if (isLowStock(item)) {
-        alerts.push({
-          id: `${store.name}-${item.sku}-low`,
-          product: item.name,
-          store: store.name,
-          type: "Stockout risk",
-          severity: "danger",
-          detail: `${store.name} — ${item.qty} units, below reorder of ${item.reorder}`,
-          magnitude: item.reorder - item.qty,
-        });
+        if (incomingTransfers.length > 0) {
+          const incomingQty = incomingTransfers.reduce((sum, transfer) => sum + Number(transfer.qty || 0), 0);
+          const hasReceived = incomingTransfers.some((transfer) => transfer.status === "Received");
+          const alertType = hasReceived ? "Inventory Rebalancing Underway" : "Transfer In Progress";
+
+          alerts.push({
+            id: `${store.name}-${item.sku}-incoming`,
+            product: item.name,
+            store: store.name,
+            type: alertType,
+            severity: "warn",
+            detail: `${store.name} — ${item.qty} units, ${incomingQty} incoming units already on the way`,
+            magnitude: incomingQty,
+          });
+        } else {
+          alerts.push({
+            id: `${store.name}-${item.sku}-low`,
+            product: item.name,
+            store: store.name,
+            type: "Stockout risk",
+            severity: "danger",
+            detail: `${store.name} — ${item.qty} units, below reorder of ${item.reorder}`,
+            magnitude: item.reorder - item.qty,
+          });
+        }
       } else if (isExcessStock(item)) {
         alerts.push({
           id: `${store.name}-${item.sku}-excess`,
