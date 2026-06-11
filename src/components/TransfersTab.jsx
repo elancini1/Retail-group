@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import EmptyState from "./EmptyState";
 import BarChart from "./charts/BarChart";
 import MetricTile from "./MetricTile";
@@ -19,7 +20,63 @@ function getNextStatusAction(currentStatus) {
   return null;
 }
 
+// Numeric for qty, timestamp for date, case-insensitive string otherwise.
+function compareTransfers(key, dir) {
+  const mult = dir === "asc" ? 1 : -1;
+  return (a, b) => {
+    if (key === "qty") return (a.qty - b.qty) * mult;
+    if (key === "date") return ((Date.parse(a.date) || 0) - (Date.parse(b.date) || 0)) * mult;
+    return String(a[key] || "").localeCompare(String(b[key] || "")) * mult;
+  };
+}
+
+function SortHeader({ label, sortKey, sort, onSort }) {
+  const active = sort.key === sortKey;
+  return (
+    <th aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button type="button" className={`th-sort${active ? " active" : ""}`} onClick={() => onSort(sortKey)}>
+        {label}
+        <span className="th-arrow">{active ? (sort.dir === "asc" ? "↑" : "↓") : ""}</span>
+      </button>
+    </th>
+  );
+}
+
 export default function TransfersTab({ transfers, selectedTransfer, selectedTransferId, onSelectTransfer, onUpdateTransferStatus }) {
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  // Default to most recent first.
+  const [sort, setSort] = useState({ key: "date", dir: "desc" });
+
+  const handleSort = (key) => {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: key === "date" || key === "qty" ? "desc" : "asc" }
+    );
+  };
+
+  const filterOptions = useMemo(() => {
+    const present = [...new Set(transfers.map((t) => t.status))].sort(
+      (a, b) => STAGES.indexOf(a) - STAGES.indexOf(b)
+    );
+    return ["All", ...present];
+  }, [transfers]);
+
+  const visibleTransfers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = transfers.filter((t) => {
+      const matchesQuery =
+        !q ||
+        t.product.toLowerCase().includes(q) ||
+        t.from.toLowerCase().includes(q) ||
+        t.to.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === "All" || t.status === statusFilter;
+      return matchesQuery && matchesStatus;
+    });
+    return filtered.sort(compareTransfers(sort.key, sort.dir));
+  }, [transfers, query, statusFilter, sort]);
+
   if (transfers.length === 0) {
     return (
       <section className="card section-card">
@@ -32,9 +89,9 @@ export default function TransfersTab({ transfers, selectedTransfer, selectedTran
     );
   }
 
-  const approvedCount = transfers.filter((item) => item.status === "Approved").length;
   const inTransitCount = transfers.filter((item) => item.status === "In Transit").length;
   const completedCount = transfers.filter((item) => item.status === "Reconciled").length;
+  const approvedCount = transfers.filter((item) => item.status === "Approved").length;
   const statusBreakdown = [
     { label: "Approved", value: approvedCount, color: "#16a34a" },
     { label: "In Transit", value: inTransitCount, color: "#f59e0b" },
@@ -59,46 +116,73 @@ export default function TransfersTab({ transfers, selectedTransfer, selectedTran
       </section>
 
       <section className="card section-card">
-        <SectionHeader icon={ListIcon} title="Transfer requests" subtitle="Review requested shipments and their current status." />
+        <SectionHeader icon={ListIcon} title="Transfer requests" subtitle="Search, filter, and sort the full transfer history." />
 
-        <div className="transfer-table-wrap">
-          <table className="transfer-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>From Store</th>
-                <th>To Store</th>
-                <th>Quantity</th>
-                <th>Status</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transfers.map((item) => {
-                const isSelected = String(item.id) === String(selectedTransferId);
-                return (
-                  <tr
-                    key={item.id}
-                    onClick={() => onSelectTransfer(item.id)}
-                    style={{
-                      background: isSelected ? "#eef4ff" : undefined,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <td>{item.product}</td>
-                    <td>{item.from}</td>
-                    <td>{item.to}</td>
-                    <td>{item.qty}</td>
-                    <td>
-                      <span className={statusPillClass(item.status)}>{item.status}</span>
-                    </td>
-                    <td>{item.date}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="inventory-tools">
+          <input
+            className="search-input"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by product or store"
+          />
+          <div className="filter-group">
+            {filterOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`filter-button ${statusFilter === option ? "active" : ""}`}
+                onClick={() => setStatusFilter(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {visibleTransfers.length === 0 ? (
+          <EmptyState
+            title="No matching transfers"
+            message="Try a different search term or clear the status filter."
+          />
+        ) : (
+          <div className="transfer-table-wrap">
+            <table className="transfer-table">
+              <thead>
+                <tr>
+                  <SortHeader label="Product" sortKey="product" sort={sort} onSort={handleSort} />
+                  <SortHeader label="From Store" sortKey="from" sort={sort} onSort={handleSort} />
+                  <SortHeader label="To Store" sortKey="to" sort={sort} onSort={handleSort} />
+                  <SortHeader label="Quantity" sortKey="qty" sort={sort} onSort={handleSort} />
+                  <SortHeader label="Status" sortKey="status" sort={sort} onSort={handleSort} />
+                  <SortHeader label="Date" sortKey="date" sort={sort} onSort={handleSort} />
+                </tr>
+              </thead>
+              <tbody>
+                {visibleTransfers.map((item) => {
+                  const isSelected = String(item.id) === String(selectedTransferId);
+                  return (
+                    <tr
+                      key={item.id}
+                      className={isSelected ? "row-selected" : ""}
+                      onClick={() => onSelectTransfer(item.id)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td>{item.product}</td>
+                      <td>{item.from}</td>
+                      <td>{item.to}</td>
+                      <td>{item.qty}</td>
+                      <td>
+                        <span className={statusPillClass(item.status)}>{item.status}</span>
+                      </td>
+                      <td>{item.date}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="card section-card transfer-summary-card">
