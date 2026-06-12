@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Sparkline from "./charts/Sparkline";
 import MetricTile from "./MetricTile";
 import SectionHeader from "./SectionHeader";
@@ -10,6 +11,8 @@ const METRIC_ICONS = {
 };
 
 export default function InsightsTab({ insights }) {
+  const [openIndex, setOpenIndex] = useState(null);
+
   return (
     <>
       <section className="dash-tiles">
@@ -78,15 +81,45 @@ export default function InsightsTab({ insights }) {
       </section>
 
       <section className="card section-card">
-        <SectionHeader icon={ChatIcon} title="AI assistant" subtitle="Example questions and mock responses from your inventory advisor." />
+        <SectionHeader icon={ChatIcon} title="AI assistant" subtitle="Example questions and responses from your inventory advisor." />
 
         <div className="ai-chat-card">
-          {insights.chat.map((entry) => (
-            <div key={entry.question} className="chat-pair">
-              <div className="chat-bubble chat-user">{entry.question}</div>
-              <div className="chat-bubble chat-assistant">{entry.answer}</div>
-            </div>
-          ))}
+          {insights.chat.map((entry, index) => {
+            const isOpen = openIndex === index;
+            return (
+              <div key={entry.question} className="chat-pair">
+                <button
+                  type="button"
+                  onClick={() => setOpenIndex(isOpen ? null : index)}
+                  aria-expanded={isOpen}
+                  className={`chat-question-button${isOpen ? " open" : ""}`}
+                >
+                  <span>{entry.question}</span>
+                  <span className="chat-question-icon">{isOpen ? "−" : "+"}</span>
+                </button>
+
+                {isOpen && (
+                  <div
+                    className="chat-answer"
+                    style={{
+                      marginTop: "6px",
+                      marginLeft: "16px",
+                      padding: "10px 14px",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      borderLeft: "3px solid var(--accent)",
+                      background: "var(--panel)",
+                      color: "var(--muted)",
+                      lineHeight: 1.5,
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    <p style={{ margin: 0 }}>{entry.answer}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
     </>
