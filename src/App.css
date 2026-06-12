@@ -807,17 +807,26 @@
   background: var(--info-bg);
   color: var(--info-text);
 }
+/* non-pill chip variant should match the same semantic colors */
 .status-approved {
-  background: var(--ok-bg);
-  color: var(--ok-text);
+  background: var(--info-bg);
+  color: var(--info-text);
 }
 .status-in-transit {
   background: var(--warn-bg);
   color: var(--warn-text);
 }
+/* Reconciled uses success (green) */
 .status-reconciled {
-  background: var(--neutral-bg);
-  color: var(--neutral-text);
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+/* Received status (purple) */
+.status-pill.status-received,
+.status-chip.status-received,
+.status-received {
+  background: var(--received-bg);
+  color: var(--received-text);
 }
 
 /* ── Empty state ───────────────────────────────────────── */

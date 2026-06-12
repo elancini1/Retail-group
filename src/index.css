@@ -36,6 +36,8 @@
   --danger-text: #b91c1c;
   --info-bg: #eaf1fe;
   --info-text: #1d4ed8;
+  --received-bg: #f5f3ff;
+  --received-text: #7c3aed;
   --neutral-bg: #f1f1f3;
   --neutral-text: #52525b;
 
@@ -96,6 +98,8 @@
   --danger-text: #f87171;
   --info-bg: rgba(59, 130, 246, 0.15);
   --info-text: #93c5fd;
+  --received-bg: rgba(124, 58, 237, 0.15);
+  --received-text: #c4b5fd;
   --neutral-bg: rgba(255, 255, 255, 0.07);
   --neutral-text: #a1a1aa;
 

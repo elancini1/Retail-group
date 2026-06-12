@@ -6,6 +6,8 @@ export default function TransferTracking({ transfers }) {
       ? "status-chip status-approved"
       : s === "In Transit"
       ? "status-chip status-in-transit"
+      : s === "Received"
+      ? "status-chip status-received"
       : "status-chip status-reconciled";
 
   return (

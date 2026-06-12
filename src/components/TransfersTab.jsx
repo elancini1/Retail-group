@@ -8,9 +8,11 @@ import { TransferIcon, ClockIcon, CheckIcon, ChartBarsIcon, ListIcon } from "./i
 const STAGES = ["Requested", "Approved", "In Transit", "Received", "Reconciled"];
 
 function statusPillClass(status) {
-  if (status === "Reconciled") return "status-pill status-healthy";
+  if (status === "Approved") return "status-pill status-approved";
   if (status === "In Transit") return "status-pill status-in-transit";
-  return "status-pill status-approved";
+  if (status === "Received") return "status-pill status-received";
+  if (status === "Reconciled") return "status-pill status-reconciled";
+  return "status-pill";
 }
 
 function getNextStatusAction(currentStatus) {
@@ -93,9 +95,10 @@ export default function TransfersTab({ transfers, selectedTransfer, selectedTran
   const completedCount = transfers.filter((item) => item.status === "Reconciled").length;
   const approvedCount = transfers.filter((item) => item.status === "Approved").length;
   const statusBreakdown = [
-    { label: "Approved", value: approvedCount, color: "#16a34a" },
+    { label: "Approved", value: approvedCount, color: "#2563eb" },
     { label: "In Transit", value: inTransitCount, color: "#f59e0b" },
-    { label: "Reconciled", value: completedCount, color: "#64748b" },
+    { label: "Received", value: transfers.filter((t) => t.status === "Received").length, color: "#7c3aed" },
+    { label: "Reconciled", value: completedCount, color: "#16a34a" },
   ];
   const currentStageIndex = Math.max(
     0,
