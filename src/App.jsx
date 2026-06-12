@@ -10,22 +10,14 @@ import InsightsTab from "./components/InsightsTab";
 import Settings from "./components/Settings";
 import usePersistentState from "./hooks/usePersistentState";
 import useTheme from "./hooks/useTheme";
-import { supabase } from "./supabase";
+import { getStoresWithInventory } from "./services/storeService";
+import { getTransfers, createTransfer, updateTransferStatus } from "./services/transferService";
 import { computeInsightMetrics, generateRiskAlerts } from "./lib/insights";
 import { generateRecommendations } from "./lib/recommendations";
 import { MOCK_STORES, MOCK_SUGGESTIONS, MOCK_TRANSFERS, MOCK_INSIGHTS } from "./data/mockData";
 import "./App.css";
 
 const TABS = ["Dashboard", "Inventory", "Transfers", "Insights", "Settings"];
-
-// Supabase stores transfer timestamps in `created_at`; render them like the
-// rest of the UI (e.g. "Jun 8, 2026"), tolerating null/invalid values.
-function formatTransferDate(value) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 const PAGE_META = {
   Dashboard: "Inventory health, transfers, and alerts at a glance.",
@@ -58,77 +50,22 @@ export default function App() {
     const loadStores = async () => {
       setStoresLoading(true);
       setStoresError("");
-      const [storesResponse, productsResponse, inventoryResponse] = await Promise.all([
-        supabase.from("stores").select("id, name, location, active"),
-        supabase.from("products").select("id, sku, name, category"),
-        supabase.from("inventory").select("id, store_id, product_id, quantity, reorder_level"),
-      ]);
-
-      const hasError = storesResponse.error || productsResponse.error || inventoryResponse.error;
-      const hasData = storesResponse.data && productsResponse.data && inventoryResponse.data;
-
-      if (hasError || !hasData) {
+      try {
+        const { stores, productNameToId, storeNameToId } = await getStoresWithInventory();
+        setStores(stores);
+        setProductNameToId(productNameToId);
+        setStoreNameToId(storeNameToId);
+      } catch (error) {
+        console.error("Failed to load stores:", error);
         setStores(MOCK_STORES);
-
-        const tableErrors = [];
-        if (storesResponse.error) {
-          console.error("storesResponse.error:", storesResponse.error);
-          tableErrors.push(`stores: ${storesResponse.error.message || JSON.stringify(storesResponse.error)}`);
-        }
-        if (productsResponse.error) {
-          console.error("productsResponse.error:", productsResponse.error);
-          tableErrors.push(`products: ${productsResponse.error.message || JSON.stringify(productsResponse.error)}`);
-        }
-        if (inventoryResponse.error) {
-          console.error("inventoryResponse.error:", inventoryResponse.error);
-          tableErrors.push(`inventory: ${inventoryResponse.error.message || JSON.stringify(inventoryResponse.error)}`);
-        }
-
-        if (tableErrors.length > 0) {
-          setStoresError(`Failed to load: ${tableErrors.join("; ")}. Showing mock stores.`);
-        } else {
-          setStoresError("Live store data is incomplete. Showing mock stores instead.");
-        }
-      } else {
-        const productById = Object.fromEntries(
-          productsResponse.data.map((p) => [p.id, p])
+        setStoresError(
+          error.tableErrors?.length
+            ? `Failed to load: ${error.tableErrors.join("; ")}. Showing mock stores.`
+            : "Live store data is incomplete. Showing mock stores instead."
         );
-
-        const inventoryByStoreId = inventoryResponse.data.reduce((acc, inv) => {
-          const product = productById[inv.product_id];
-          if (!product) return acc;
-
-          const item = {
-            sku: product.sku,
-            name: product.name,
-            qty: inv.quantity,
-            reorder: inv.reorder_level,
-          };
-
-          if (!acc[inv.store_id]) acc[inv.store_id] = [];
-          acc[inv.store_id].push(item);
-          return acc;
-        }, {});
-
-        const finalStores = storesResponse.data.map((store) => ({
-          id: store.id,
-          name: store.name,
-          location: store.location || "",
-          active: store.active,
-          inventory: inventoryByStoreId[store.id] || [],
-        }));
-
-        setStores(finalStores);
+      } finally {
+        setStoresLoading(false);
       }
-
-      if (productsResponse.data) {
-        setProductNameToId(Object.fromEntries(productsResponse.data.map((p) => [p.name, p.id])));
-      }
-      if (storesResponse.data) {
-        setStoreNameToId(Object.fromEntries(storesResponse.data.map((s) => [s.name, s.id])));
-      }
-
-      setStoresLoading(false);
     };
 
     loadStores();
@@ -136,45 +73,12 @@ export default function App() {
 
   useEffect(() => {
     const loadTransfers = async () => {
-      const [transfersResponse, transferItemsResponse, productsResponse, storesResponse] = await Promise.all([
-        supabase.from("transfers").select("id, from_store_id, to_store_id, status, created_at"),
-        supabase.from("transfer_items").select("transfer_id, product_id, quantity"),
-        supabase.from("products").select("id, name"),
-        supabase.from("stores").select("id, name"),
-      ]);
-
-      const hasError = transfersResponse.error || transferItemsResponse.error || productsResponse.error || storesResponse.error;
-      const hasData = transfersResponse.data && transferItemsResponse.data && productsResponse.data && storesResponse.data;
-
-      if (hasError || !hasData) {
+      try {
+        setTransfers(await getTransfers());
+      } catch (error) {
+        console.error("Failed to load transfers:", error);
         setTransfers(MOCK_TRANSFERS);
-        return;
       }
-
-      const productById = Object.fromEntries(productsResponse.data.map((p) => [p.id, p]));
-      const storeById = Object.fromEntries(storesResponse.data.map((s) => [s.id, s]));
-
-      const mappedTransfers = [];
-      for (const transfer of transfersResponse.data) {
-        const items = transferItemsResponse.data.filter((item) => item.transfer_id === transfer.id);
-        for (const item of items) {
-          const product = productById[item.product_id];
-          const fromStore = storeById[transfer.from_store_id];
-          const toStore = storeById[transfer.to_store_id];
-
-          mappedTransfers.push({
-            id: transfer.id,
-            product: product?.name || "Unknown",
-            from: fromStore?.name || "Unknown",
-            to: toStore?.name || "Unknown",
-            qty: item.quantity,
-            status: transfer.status,
-            date: formatTransferDate(transfer.created_at),
-          });
-        }
-      }
-
-      setTransfers(mappedTransfers);
     };
 
     loadTransfers();
@@ -194,40 +98,12 @@ export default function App() {
       return;
     }
 
-    const transferId = crypto.randomUUID();
-    const { data: insertedTransfer, error: transferInsertError } = await supabase
-      .from("transfers")
-      .insert([
-        {
-          id: transferId,
-          from_store_id: fromStoreId,
-          to_store_id: toStoreId,
-          status: "Approved",
-          created_at: new Date().toISOString(),
-        },
-      ])
-      .select("id")
-      .single();
-
-    if (transferInsertError || !insertedTransfer?.id) {
-      console.error("transfer insert failed:", transferInsertError);
-      setTransferError(`Failed to save transfer: ${transferInsertError?.message || "Unknown error."}`);
-      return;
-    }
-
-    const { error: transferItemError } = await supabase.from("transfer_items").insert([
-      {
-        id: crypto.randomUUID(),
-        transfer_id: transferId,
-        product_id: productId,
-        quantity: suggestion.qty,
-      },
-    ]);
-
-    if (transferItemError) {
-      console.error("transfer item insert failed:", transferItemError);
-      await supabase.from("transfers").delete().eq("id", transferId);
-      setTransferError(`Failed to save transfer item: ${transferItemError.message || "Unknown error."}`);
+    let transferId;
+    try {
+      transferId = await createTransfer({ fromStoreId, toStoreId, productId, qty: suggestion.qty });
+    } catch (error) {
+      console.error("transfer save failed:", error);
+      setTransferError(`Failed to save transfer: ${error.message}`);
       return;
     }
 
@@ -257,14 +133,11 @@ export default function App() {
   const handleUpdateTransferStatus = async (transferId, newStatus) => {
     setTransferError("");
 
-    const { error: updateError } = await supabase
-      .from("transfers")
-      .update({ status: newStatus })
-      .eq("id", transferId);
-
-    if (updateError) {
-      console.error("transfer status update failed:", updateError);
-      setTransferError(`Failed to update transfer status: ${updateError.message || "Unknown error."}`);
+    try {
+      await updateTransferStatus(transferId, newStatus);
+    } catch (error) {
+      console.error("transfer status update failed:", error);
+      setTransferError(`Failed to update transfer status: ${error.message}`);
       return false;
     }
 
