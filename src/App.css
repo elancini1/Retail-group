@@ -658,6 +658,38 @@
   display: grid;
   gap: 8px;
 }
+.chat-question-button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+}
+.chat-question-button:hover {
+  background: var(--surface-hover);
+}
+.chat-question-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.chat-question-button.open {
+  background: var(--panel-2);
+  border-color: var(--accent);
+}
+.chat-question-icon {
+  opacity: 0.7;
+}
 .chat-bubble {
   max-width: 100%;
   padding: 14px 16px;

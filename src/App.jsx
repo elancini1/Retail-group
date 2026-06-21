@@ -14,6 +14,7 @@ import { getStoresWithInventory } from "./services/storeService";
 import { getTransfers, createTransfer, updateTransferStatus } from "./services/transferService";
 import { computeInsightMetrics, generateRiskAlerts } from "./lib/insights";
 import { generateRecommendations } from "./lib/recommendations";
+import { generateInsightChat } from "./lib/insightsChat";
 import { MOCK_STORES, MOCK_SUGGESTIONS, MOCK_TRANSFERS, MOCK_INSIGHTS } from "./data/mockData";
 import "./App.css";
 
@@ -162,15 +163,24 @@ export default function App() {
     });
   }, [generatedRecommendations, approvedKeys, rejectedKeys]);
 
-  const insights = useMemo(
-    () => ({
+  const insights = useMemo(() => {
+    const metrics = computeInsightMetrics(stores, transfers);
+    const alerts = generateRiskAlerts(stores, transfers);
+    const chat = generateInsightChat(
+      stores,
+      metrics,
+      alerts,
+      filteredGeneratedRecommendations
+    );
+
+    return {
       ...MOCK_INSIGHTS,
-      metrics: computeInsightMetrics(stores, transfers),
+      metrics,
       recommendations: filteredGeneratedRecommendations,
-      alerts: generateRiskAlerts(stores, transfers),
-    }),
-    [stores, transfers, filteredGeneratedRecommendations]
-  );
+      alerts,
+      chat,
+    };
+  }, [stores, transfers, filteredGeneratedRecommendations]);
 
   const filteredSuggestions = useMemo(() => {
     return suggestions.filter((suggestion) => {

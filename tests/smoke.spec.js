@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("dashboard renders the header and summary stats", async ({ page }) => {
-  await expect(page.getByText("Retail Transfer")).toBeVisible();
+  await expect(page.getByText("Relay")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Dashboard", level: 1 })).toBeVisible();
   await expect(page.getByText("Active stores")).toBeVisible();
   await expect(page.getByText("Units in stock")).toBeVisible();
