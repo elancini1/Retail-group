@@ -16,7 +16,7 @@ export default function Topbar({ tabs, activeTab, onSelect, theme, onToggleTheme
         <span className="brand-mark">
           <LogoMark />
         </span>
-        <span className="brand-name">Retail Transfer</span>
+        <span className="brand-name">Relay</span>
       </div>
 
       <nav className="topbar-nav" aria-label="Primary">
@@ -42,7 +42,7 @@ export default function Topbar({ tabs, activeTab, onSelect, theme, onToggleTheme
           <BellIcon size={18} />
         </span>
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-        <span className="avatar" aria-hidden="true">RG</span>
+        <span className="avatar" aria-hidden="true">R</span>
       </div>
     </header>
   );
