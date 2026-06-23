@@ -148,6 +148,27 @@ export default function App() {
       )
     );
 
+    // If we just reconciled, refresh stores/inventory so UI updates immediately.
+    if (newStatus === "Reconciled") {
+      setStoresLoading(true);
+      setStoresError("");
+      try {
+        const { stores, productNameToId, storeNameToId } = await getStoresWithInventory();
+        setStores(stores);
+        setProductNameToId(productNameToId);
+        setStoreNameToId(storeNameToId);
+      } catch (error) {
+        console.error("Failed to refresh stores after reconciliation:", error);
+        setStoresError(
+          error.tableErrors?.length
+            ? `Failed to load: ${error.tableErrors.join("; ")}.` 
+            : "Failed to refresh stores after reconciliation."
+        );
+      } finally {
+        setStoresLoading(false);
+      }
+    }
+
     return true;
   };
 

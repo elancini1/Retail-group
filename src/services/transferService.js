@@ -1,6 +1,7 @@
 // Transfer data access (Supabase): reads the transfer history and persists
 // approvals / status changes.
 import { supabase } from "../supabase";
+import { applyTransferReconciliation } from "./inventoryService";
 
 // Render Supabase `created_at` like the rest of the UI (e.g. "Jun 8, 2026").
 export function formatTransferDate(value) {
@@ -94,6 +95,35 @@ export async function createTransfer({ fromStoreId, toStoreId, productId, qty })
 }
 
 export async function updateTransferStatus(transferId, status) {
+  // Load the transfer so we can decide whether reconciliation is needed.
+  const transferRes = await supabase
+    .from("transfers")
+    .select("id, status, from_store_id, to_store_id")
+    .eq("id", transferId)
+    .maybeSingle();
+
+  if (transferRes.error) {
+    throw new Error(transferRes.error.message || "Failed to load transfer.");
+  }
+
+  if (!transferRes.data) {
+    throw new Error("Transfer not found.");
+  }
+
+  const existing = transferRes.data;
+
+  // Only apply inventory changes when transitioning to exactly "Reconciled"
+  // and the transfer wasn't already reconciled.
+  if (status === "Reconciled" && existing.status !== "Reconciled") {
+    const itemsRes = await supabase.from("transfer_items").select("product_id, quantity").eq("transfer_id", transferId);
+    if (itemsRes.error) {
+      throw new Error(itemsRes.error.message || "Failed to load transfer items.");
+    }
+
+    // apply inventory updates (throws on failure)
+    await applyTransferReconciliation(existing.from_store_id, existing.to_store_id, itemsRes.data || []);
+  }
+
   const { error } = await supabase.from("transfers").update({ status }).eq("id", transferId);
   if (error) {
     throw new Error(error.message || "Failed to update transfer status.");
